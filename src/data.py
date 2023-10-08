@@ -9,4 +9,5 @@ def create_regression_data():
 
     col_names = ["col_" + str(i) for i in range(X.shape[1])]
     X = pd.DataFrame(X, columns=col_names)
+    y = pd.DataFrame(y, columns=['labels'])
     return X, y
