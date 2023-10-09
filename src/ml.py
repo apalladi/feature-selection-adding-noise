@@ -97,7 +97,7 @@ def select_relevant_features(df_coef, features, verbose):
     return simplified_dataset
 
 
-def scan_features_pipeline(features, labels, model, verbose):
+def scan_features_pipeline(features, labels, model, verbose, random_state):
     """This pipeline performs various operations:
     - train and evaluate the model
     - generates the DataFrame with the feature importance
@@ -108,6 +108,7 @@ def scan_features_pipeline(features, labels, model, verbose):
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
         - verbose: True or False to tune the level of verbosity
+        - random_state: select the random state of the train/test splitting process
 
     Return:
         - the simplified dataset, containing only the most relevant features
@@ -116,7 +117,9 @@ def scan_features_pipeline(features, labels, model, verbose):
     #  create train and test data
     x_new = features.copy(deep=True)
     x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
-    x_train, x_test, y_train, y_test = train_test_split(x_new, labels, test_size=0.2)
+    x_train, x_test, y_train, y_test = train_test_split(
+        x_new, labels, test_size=0.2, random_state=random_state
+    )
 
     trained_model = train_evaluate_model(x_train, y_train, x_test, y_test, model)
 
@@ -128,7 +131,14 @@ def scan_features_pipeline(features, labels, model, verbose):
 
 
 def get_relevant_features(
-    features, labels, model, epochs, patience, verbose=True, filename_output=False
+    features,
+    labels,
+    model,
+    epochs,
+    patience,
+    verbose=True,
+    filename_output=False,
+    random_state=42,
 ):
     """This functions performs multiple cycles to reduce the dimension of the dataset.
 
@@ -141,6 +151,7 @@ def get_relevant_features(
         the execution of the code
         - verbose: True or False, to tune the level of verbosity
         - filename_output: False or string (if you want to export the simplified dataset)
+        - random_state: select the random seed
 
     Return:
         - the dataset simplified after multiple epochs of feature selection
@@ -150,10 +161,15 @@ def get_relevant_features(
     counter_patience = 0
     epoch = 0
 
+    np.random.seed(random_state)
+    random_states = np.random.randint(1, int(10 * epochs), size=epochs)
+
     while (counter_patience < patience) and (epoch < epochs):
         n_features_before = x_new.shape[1]
         print("=====================EPOCH", epoch + 1, "=====================")
-        x_new = scan_features_pipeline(x_new, labels, model, verbose)
+        x_new = scan_features_pipeline(
+            x_new, labels, model, verbose, random_states[epoch]
+        )
         n_features_after = x_new.shape[1]
 
         if n_features_before == n_features_after:
