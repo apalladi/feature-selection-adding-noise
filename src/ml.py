@@ -50,7 +50,7 @@ def select_relevant_features(df_coef, X, verbose):
     relevant_features = relevant_features["Feature name"]
 
     if verbose:
-        print("Selected", len(relevant_features), "features out of", X.shape[1])
+        print("Selected", len(relevant_features), "features out of", X.shape[1]-1)
 
     # return simplified dataset, containing only relevant features
     simplified_dataset = X.loc[:, relevant_features]
@@ -83,6 +83,7 @@ def get_relevant_features(
 
     while (counter_patience < patience) and (epoch < epochs):
         n_features_before = X_new.shape[1]
+        print("=====================EPOCH", epoch+1, "=====================")
         X_new = scan_features(X_new, y, model, verbose)
         n_features_after = X_new.shape[1]
 
