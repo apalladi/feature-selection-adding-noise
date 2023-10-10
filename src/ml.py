@@ -3,8 +3,8 @@ by adding random noise"""
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
 
 
 def train_evaluate_model(x_train, y_train, x_test, y_test, model):
@@ -45,23 +45,35 @@ def get_feature_importances(trained_model, column_names):
         - column_names: the name of the columns associated to the features
 
     Return:
-        - a DataFrame containing the feature importance as column and the name
-        of the features as index
+        - a DataFrame containing the feature importance (not sorted) as column and
+        the name of the features as index
     """
 
     # inspect coefficients
     try:
-        model_coefficients = np.abs(trained_model.coef_)
+        model_coefficients = trained_model.coef_
     except:
         model_coefficients = trained_model.feature_importances_
 
-    df_coef = pd.DataFrame(
-        np.transpose([model_coefficients, column_names]),
-        columns=["Feature importance", "Feature name"],
-    )
+    df_coef = pd.DataFrame(model_coefficients, index=column_names)
+
+    return df_coef
+
+
+def compute_mean_coefficients(df_coefs):
+    """It computes the average coefficients, given a DataFrame with multiple columns.
+
+    Parameters:
+        - a DataFrame with coefficients obtained in multiple trainings
+
+    Return:
+        - a DataFrame with one column, containing the absolute values of the average coefficients
+    """
+    df_coef = pd.DataFrame(df_coefs.mean(axis=1), columns=["Feature importance"])
+    df_coef["Feature importance"] = np.abs(df_coef["Feature importance"])
+    df_coef["Feature name"] = df_coef.index
     df_coef = df_coef.sort_values("Feature importance", ascending=False)
     df_coef.reset_index(inplace=True, drop=True)
-
     return df_coef
 
 
@@ -97,6 +109,36 @@ def select_relevant_features(df_coef, features, verbose):
     return simplified_dataset
 
 
+def generate_train_test_data(features, labels, random_state):
+    """It splits the data into training and validation,
+    by using the KFold splitting method.
+
+    Parameters:
+        - features: the matrix with features, commonly called X
+        - labels: the vector with labels, commonly called y
+
+    Return:
+        - train and test data
+    """
+
+    x_trains = []
+    y_trains = []
+    x_tests = []
+    y_tests = []
+
+    k_fold = KFold(n_splits=5, random_state=random_state, shuffle=True)
+    k_fold.get_n_splits(features)
+    for _, (train_index, test_index) in enumerate(k_fold.split(features)):
+        # train data
+        x_trains.append(features.iloc[train_index, :])
+        y_trains.append(labels.iloc[train_index])
+        # test data
+        x_tests.append(features.iloc[test_index, :])
+        y_tests.append(labels.iloc[test_index])
+
+    return x_trains, y_trains, x_tests, y_tests
+
+
 def scan_features_pipeline(features, labels, model, verbose, random_state):
     """This pipeline performs various operations:
     - train and evaluate the model
@@ -114,17 +156,28 @@ def scan_features_pipeline(features, labels, model, verbose, random_state):
         - the simplified dataset, containing only the most relevant features
     """
 
-    #  create train and test data
+    #  add noise
     x_new = features.copy(deep=True)
     x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
-    x_train, x_test, y_train, y_test = train_test_split(
-        x_new, labels, test_size=0.2, random_state=random_state
+
+    # create train-test data
+    x_trains, y_trains, x_tests, y_tests = generate_train_test_data(
+        x_new, labels, random_state
     )
 
-    trained_model = train_evaluate_model(x_train, y_train, x_test, y_test, model)
+    for i in range(len(x_trains)):
+        trained_model = train_evaluate_model(
+            x_trains[i], y_trains[i], x_tests[i], y_tests[i], model
+        )
+        if i == 0:
+            df_coefs = get_feature_importances(trained_model, x_trains[i].columns)
+            df_coefs.columns = ["cycle_" + str(i + 1)]
+        else:
+            df_coefs["cycle_" + str(i + 1)] = get_feature_importances(
+                trained_model, x_trains[i].columns
+            )
 
-    df_coef = get_feature_importances(trained_model, x_train.columns)
-
+    df_coef = compute_mean_coefficients(df_coefs)
     simplified_dataset = select_relevant_features(df_coef, x_new, verbose)
 
     return simplified_dataset
