@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 
 
-def train_evaluate_model(x_train, y_train, x_test, y_test, model):
+def train_evaluate_model(x_train, y_train, x_test, y_test, model, verbose):
     """It trains and evaluate the machine learning model.
 
     Parameters:
@@ -27,12 +27,15 @@ def train_evaluate_model(x_train, y_train, x_test, y_test, model):
     x_test = scaler.transform(x_test)
 
     # fit model
-    print("Fitting the model with", x_train.shape[1], "features")
+    if verbose:
+        print("Fitting the model with", x_train.shape[1], "features")
     model.fit(x_train, y_train)
     train_score = round(model.score(x_train, y_train), 4)
     test_score = round(model.score(x_test, y_test), 4)
-    print("Train score", train_score)
-    print("Test score", test_score)
+    
+    if verbose:
+        print("Train score", train_score)
+        print("Test score", test_score)
 
     return model
 
@@ -139,7 +142,7 @@ def generate_kfold_data(features, labels, random_state):
     return x_trains, y_trains, x_tests, y_tests
 
 
-def train_with_kfold_splitting(features, labels, model, random_state):
+def train_with_kfold_splitting(features, labels, model, verbose, random_state):
     """It trains the model using the kfold splitting and returns
     a DataFrame with the feature importance.
 
@@ -147,6 +150,7 @@ def train_with_kfold_splitting(features, labels, model, random_state):
         - features: the matrix with features, commonly called X
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
+        - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
 
     Return:
@@ -160,7 +164,7 @@ def train_with_kfold_splitting(features, labels, model, random_state):
 
     for i in range(len(x_trains)):
         trained_model = train_evaluate_model(
-            x_trains[i], y_trains[i], x_tests[i], y_tests[i], model
+            x_trains[i], y_trains[i], x_tests[i], y_tests[i], model, verbose
         )
         if i == 0:
             df_coefs = get_feature_importances(trained_model, x_trains[i].columns)
@@ -195,7 +199,7 @@ def scan_features_pipeline(features, labels, model, verbose, random_state):
     x_new = features.copy(deep=True)
     x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
 
-    df_coef = train_with_kfold_splitting(x_new, labels, model, random_state)
+    df_coef = train_with_kfold_splitting(x_new, labels, model, verbose, random_state)
     simplified_dataset = select_relevant_features(df_coef, x_new, verbose)
 
     return simplified_dataset
