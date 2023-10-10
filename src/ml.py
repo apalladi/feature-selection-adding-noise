@@ -4,7 +4,7 @@ by adding random noise"""
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, train_test_split
 
 
 def train_evaluate_model(x_train, y_train, x_test, y_test, model, verbose):
@@ -32,7 +32,7 @@ def train_evaluate_model(x_train, y_train, x_test, y_test, model, verbose):
     model.fit(x_train, y_train)
     train_score = round(model.score(x_train, y_train), 4)
     test_score = round(model.score(x_test, y_test), 4)
-    
+
     if verbose:
         print("Train score", train_score)
         print("Test score", test_score)
@@ -178,7 +178,40 @@ def train_with_kfold_splitting(features, labels, model, verbose, random_state):
     return df_coef
 
 
-def scan_features_pipeline(features, labels, model, verbose, random_state):
+def train_with_simple_splitting(features, labels, model, verbose, random_state):
+    """It trains the model using the train/test splitting and returns
+    a DataFrame with the feature importance.
+
+    Parameters:
+        - features: the matrix with features, commonly called X
+        - labels: the vector with labels, commonly called y
+        - model: an untrained scikit-learn model
+        - verbose: True or False to tune the level of verbosity
+        - random_state: select the random state of the train/test splitting process
+
+    Return:
+        - a DataFrame with one column, containing the features importance (or the coefficients)
+    """
+
+    # create train-test data
+    x_train, x_test, y_train, y_test = train_test_split(
+        features, labels, test_size=0.2, random_state=random_state
+    )
+
+    trained_model = train_evaluate_model(
+        x_train, y_train, x_test, y_test, model, verbose
+    )
+    df_coef = get_feature_importances(trained_model, x_train.columns)
+
+    df_coef = df_coef.sort_values("Feature importance", ascending=False)
+    df_coef.reset_index(inplace=True, drop=True)
+
+    return df_coef
+
+
+def scan_features_pipeline(
+    features, labels, model, splitting_type, verbose, random_state
+):
     """This pipeline performs various operations:
     - train and evaluate the model
     - generates the DataFrame with the feature importance
@@ -188,6 +221,8 @@ def scan_features_pipeline(features, labels, model, verbose, random_state):
         - features: the matrix with features, commonly called X
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
+        - splitting_type: choose between "simple" (80% train, 20% test)
+          or "kfold" (5-fold splitting)
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
 
@@ -199,7 +234,17 @@ def scan_features_pipeline(features, labels, model, verbose, random_state):
     x_new = features.copy(deep=True)
     x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
 
-    df_coef = train_with_kfold_splitting(x_new, labels, model, verbose, random_state)
+    if splitting_type == "kfold":
+        df_coef = train_with_kfold_splitting(
+            x_new, labels, model, verbose, random_state
+        )
+    elif splitting_type == "simple":
+        df_coef = train_with_simple_splitting(
+            x_new, labels, model, verbose, random_state
+        )
+    else:
+        raise ValueError("Choice not recognized. Possible choices are kfold or simple")
+
     simplified_dataset = select_relevant_features(df_coef, x_new, verbose)
 
     return simplified_dataset
@@ -209,6 +254,7 @@ def get_relevant_features(
     features,
     labels,
     model,
+    splitting_type,
     epochs,
     patience,
     verbose=True,
@@ -221,6 +267,8 @@ def get_relevant_features(
         - features: the matrix with features, commonly called X
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
+        - splitting_type: choose between "simple" (80% train, 20% test)
+          or "kfold" (5-fold splitting)
         - epochs: the number of epochs (or cycles)
         - patience: the number of cycles of non-improvement to wait before stopping
         the execution of the code
@@ -243,7 +291,7 @@ def get_relevant_features(
         n_features_before = x_new.shape[1]
         print("=====================EPOCH", epoch + 1, "=====================")
         x_new = scan_features_pipeline(
-            x_new, labels, model, verbose, random_states[epoch]
+            x_new, labels, model, splitting_type, verbose, random_states[epoch]
         )
         n_features_after = x_new.shape[1]
 
