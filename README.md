@@ -35,6 +35,7 @@ This function takes as arguments:
 - `model`, a scikit-learn model
 - `epochs`, the number of epochs (i.e. for how many cycles you want to apply recursively the feature selection)
 - `patience`, number of epochs without any improvement of the features selection, before stopping the process (the idea is similar to the early stopping of Tensorflow/Keras)
+- `splitting_type`, it can be equal to `simple` (for simple train/test split) or `kfold` (for 5-fold splitting). If you choose `kfold`, the feature importance will be computed as the average feature importance for each train/test subset.
 - `filename_output`, a string to indicate where to save the file. You can also choose `False` if you do not want to save it
 - `random_state`, set the random seed that it is used by the k-fold splitting
 
