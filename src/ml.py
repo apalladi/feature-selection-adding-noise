@@ -72,11 +72,19 @@ def compute_mean_coefficients(df_coefs):
     Return:
         - a DataFrame with one column, containing the absolute values of the average coefficients
     """
-    df_coef = pd.DataFrame(df_coefs.mean(axis=1), columns=["Feature importance"])
+
+    if df_coefs.shape[1] > 1:
+        df_coef = pd.DataFrame(df_coefs.mean(axis=1), columns=["Feature importance"])
+    else:
+        print("Using this one")
+        df_coef = pd.DataFrame(df_coefs.iloc[:, 0], index=df_coefs.index)
+        df_coef.columns = ["Feature importance"]
+
     df_coef["Feature importance"] = np.abs(df_coef["Feature importance"])
     df_coef["Feature name"] = df_coef.index
     df_coef = df_coef.sort_values("Feature importance", ascending=False)
     df_coef.reset_index(inplace=True, drop=True)
+
     return df_coef
 
 
@@ -201,10 +209,9 @@ def train_with_simple_splitting(features, labels, model, verbose, random_state):
     trained_model = train_evaluate_model(
         x_train, y_train, x_test, y_test, model, verbose
     )
-    df_coef = get_feature_importances(trained_model, x_train.columns)
+    df_coefs = get_feature_importances(trained_model, x_train.columns)
 
-    df_coef = df_coef.sort_values("Feature importance", ascending=False)
-    df_coef.reset_index(inplace=True, drop=True)
+    df_coef = compute_mean_coefficients(df_coefs)
 
     return df_coef
 
