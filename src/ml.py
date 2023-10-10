@@ -109,7 +109,7 @@ def select_relevant_features(df_coef, features, verbose):
     return simplified_dataset
 
 
-def generate_train_test_data(features, labels, random_state):
+def generate_kfold_data(features, labels, random_state):
     """It splits the data into training and validation,
     by using the KFold splitting method.
 
@@ -139,6 +139,41 @@ def generate_train_test_data(features, labels, random_state):
     return x_trains, y_trains, x_tests, y_tests
 
 
+def train_with_kfold_splitting(features, labels, model, random_state):
+    """It trains the model using the kfold splitting and returns
+    a DataFrame with the feature importance.
+
+    Parameters:
+        - features: the matrix with features, commonly called X
+        - labels: the vector with labels, commonly called y
+        - model: an untrained scikit-learn model
+        - random_state: select the random state of the train/test splitting process
+
+    Return:
+        - a DataFrame with one column, containing the features importance (or the coefficients)
+    """
+
+    # create train-test data
+    x_trains, y_trains, x_tests, y_tests = generate_kfold_data(
+        features, labels, random_state
+    )
+
+    for i in range(len(x_trains)):
+        trained_model = train_evaluate_model(
+            x_trains[i], y_trains[i], x_tests[i], y_tests[i], model
+        )
+        if i == 0:
+            df_coefs = get_feature_importances(trained_model, x_trains[i].columns)
+            df_coefs.columns = ["cycle_" + str(i + 1)]
+        else:
+            df_coefs["cycle_" + str(i + 1)] = get_feature_importances(
+                trained_model, x_trains[i].columns
+            )
+
+    df_coef = compute_mean_coefficients(df_coefs)
+    return df_coef
+
+
 def scan_features_pipeline(features, labels, model, verbose, random_state):
     """This pipeline performs various operations:
     - train and evaluate the model
@@ -160,24 +195,7 @@ def scan_features_pipeline(features, labels, model, verbose, random_state):
     x_new = features.copy(deep=True)
     x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
 
-    # create train-test data
-    x_trains, y_trains, x_tests, y_tests = generate_train_test_data(
-        x_new, labels, random_state
-    )
-
-    for i in range(len(x_trains)):
-        trained_model = train_evaluate_model(
-            x_trains[i], y_trains[i], x_tests[i], y_tests[i], model
-        )
-        if i == 0:
-            df_coefs = get_feature_importances(trained_model, x_trains[i].columns)
-            df_coefs.columns = ["cycle_" + str(i + 1)]
-        else:
-            df_coefs["cycle_" + str(i + 1)] = get_feature_importances(
-                trained_model, x_trains[i].columns
-            )
-
-    df_coef = compute_mean_coefficients(df_coefs)
+    df_coef = train_with_kfold_splitting(x_new, labels, model, random_state)
     simplified_dataset = select_relevant_features(df_coef, x_new, verbose)
 
     return simplified_dataset
