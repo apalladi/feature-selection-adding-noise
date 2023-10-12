@@ -9,6 +9,7 @@ from src.ml import (
     compute_mean_coefficients,
     select_relevant_features,
     generate_kfold_data,
+    train_with_kfold_splitting,
 )
 
 
@@ -77,25 +78,29 @@ def test_mean_coefficients_multiple_columns():
         np.array(df_sorted["Feature importance"]) == vec
     ), "Feature importances are not sorted properly"
 
-
+    
 def test_select_relevant_features():
-    df_coef = pd.DataFrame([5, 4, 3, 2, 1], columns=["Feature importance"])
-    df_coef["Feature name"] = ["col1", "col2", "random_feature", "col3", "col4"]
-    features = pd.DataFrame(
-        np.random.rand(10, 5),
-        columns=["col1", "col2", "random_feature", "col3", "col4"],
-    )
+    df_coef = pd.DataFrame([5, 4, 3, 2, 1], columns=['Feature importance'])
+    df_coef['Feature name'] = ['col1', 'col2', 'random_feature', 'col3', 'col4']
+    features = pd.DataFrame(np.random.rand(10, 5), 
+                      columns = ['col1', 'col2', 'random_feature', 'col3', 'col4'])
     feature_selected = select_relevant_features(df_coef, features, verbose=True)
-    assert all(feature_selected.columns == ["col1", "col2"]), "Wrong columns selected"
-
-
+    assert all(feature_selected.columns == ['col1', 'col2']), "Wrong columns selected"
+    
 def test_kfold_splitting():
     features = pd.DataFrame(np.random.rand(100, 10))
     labels = pd.DataFrame(np.random.rand(100))
-    x_trains, y_trains, x_tests, y_tests = generate_kfold_data(
-        features, labels, random_state=42
-    )
-    assert len(x_trains) == 5, "Length of train features is wrong"
-    assert len(x_tests) == 5, "Length of test features is wrong"
-    assert len(y_trains) == 5, "Length of train labels is wrong"
-    assert len(y_tests) == 5, "Length of test labels is wrong"
+    x_trains, y_trains, x_tests, y_tests = generate_kfold_data(features, labels, random_state=42)
+    assert len(x_trains)==5, "Length of train features is wrong"
+    assert len(x_tests)==5, "Length of test features is wrong"
+    assert len(y_trains)==5, "Length of train labels is wrong"
+    assert len(y_tests)==5, "Length of test labels is wrong"
+    
+
+def test_train_kfold_splitting():
+    features = pd.DataFrame(np.random.rand(100, 10))
+    labels = pd.DataFrame(np.random.rand(100))
+    model = Lasso()
+    df_coef = train_with_kfold_splitting(features, labels, model, verbose=True, random_state=42)
+    assert type(df_coef)==pd.DataFrame, "df_coef must be a Pandas DataFrame"
+    assert len(df_coef)==features.shape[1], "The length of df_coef must match the number of features"
