@@ -10,6 +10,9 @@ from src.ml import (
     select_relevant_features,
     generate_kfold_data,
     train_with_kfold_splitting,
+    train_with_simple_splitting,
+    scan_features_pipeline,
+    get_relevant_features,
 )
 
 
@@ -104,3 +107,40 @@ def test_train_kfold_splitting():
     df_coef = train_with_kfold_splitting(features, labels, model, verbose=True, random_state=42)
     assert type(df_coef)==pd.DataFrame, "df_coef must be a Pandas DataFrame"
     assert len(df_coef)==features.shape[1], "The length of df_coef must match the number of features"
+    
+    
+def test_train_simple_splitting():
+    features = pd.DataFrame(np.random.rand(100, 10))
+    labels = pd.DataFrame(np.random.rand(100))
+    model = Lasso()
+    df_coef = train_with_simple_splitting(features, labels, model, verbose=True, random_state=42)
+    assert type(df_coef)==pd.DataFrame, "df_coef must be a Pandas DataFrame"
+    assert len(df_coef)==features.shape[1], "The length of df_coef must match the number of features"
+    
+def test_scan_feature_pipeline():
+    features, labels = create_regression_data()
+    model = Lasso()
+    reduced_features = scan_features_pipeline(features, labels, model, splitting_type='simple', verbose=False, random_state=43)
+    assert reduced_features.shape[1]<features.shape[1], "The pipeline did not reduce the number of features"
+    reduced_features = scan_features_pipeline(features, labels, model, splitting_type='kfold', verbose=False, random_state=43)
+    assert reduced_features.shape[1]<features.shape[1], "The pipeline did not reduce the number of features"
+    
+def test_get_relevant_features():
+    features, labels = create_regression_data()
+    model = Lasso()
+    
+    x_new = get_relevant_features(features, labels, model, 
+                                  splitting_type='simple',
+                                  epochs=10,
+                                  patience=5,
+                                  random_state=41)
+    
+    assert x_new.shape[1]<features.shape[1], "The pipeline did not reduce the number of features"
+    
+    x_new = get_relevant_features(features, labels, model, 
+                                  splitting_type='kfold',
+                                  epochs=10,
+                                  patience=5,
+                                  random_state=41)
+    
+    assert x_new.shape[1]<features.shape[1], "The pipeline did not reduce the number of features"
