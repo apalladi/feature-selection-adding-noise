@@ -20,6 +20,12 @@ python3 -m venv .env
 source .env/bin/activate
 pip install -r requirements.txt
 ```
+
+To check if everything works, you can run the unit tests:
+```
+python -m pytest tests/test.py
+```
+
 You are now ready to use the repository!
 
 ## Getting started
