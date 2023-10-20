@@ -53,10 +53,12 @@ def get_feature_importances(trained_model, column_names):
     """
 
     # inspect coefficients
-    try:
+    if hasattr(trained_model, 'coef_'):
         model_coefficients = trained_model.coef_
-    except:
+    elif hasattr(trained_model, 'feature_importances_'):
         model_coefficients = trained_model.feature_importances_
+    else:
+        raise ValueError("Could not retrieve the feature importance")
 
     df_coef = pd.DataFrame(model_coefficients, index=column_names)
 
