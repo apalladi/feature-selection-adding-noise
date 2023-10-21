@@ -264,7 +264,7 @@ def scan_features_pipeline(
         x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
         scaler_type = "StandardScaler"
     elif noise_type == "random":
-        x_new["random_features"] = 2 * np.random.rand(len(x_new)) - 1
+        x_new["random_features"] = np.random.rand(len(x_new))
         scaler_type = "MinMaxScaler"
     else:
         raise ValueError("Allowed values for noise_type are gaussian and random")
