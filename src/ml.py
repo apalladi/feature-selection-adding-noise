@@ -8,7 +8,7 @@ from sklearn.model_selection import KFold, train_test_split
 from sklearn.linear_model import Lasso
 from sklearn.ensemble import RandomForestClassifier
 
-from typing import Union,Tuple,List
+from typing import Union,Tuple,List,Optional
 
 def train_evaluate_model(x_train:pd.DataFrame, 
                          y_train:pd.DataFrame, 
@@ -286,7 +286,7 @@ def get_relevant_features(
     epochs:int,
     patience:int,
     verbose:bool=True,
-    filename_output:bool=False,
+    filename_output:Optional[str]=None,
     random_state:int=42,
 ) -> pd.DataFrame:
     """This functions performs multiple cycles to reduce the dimension of the dataset.
@@ -301,7 +301,7 @@ def get_relevant_features(
         - patience: the number of cycles of non-improvement to wait before stopping
         the execution of the code
         - verbose: True or False, to tune the level of verbosity
-        - filename_output: False or string (if you want to export the simplified dataset)
+        - filename_output:  name of the simplified dataset if you want to export it, default is None
         - random_state: select the random seed
 
     Return:
@@ -335,7 +335,7 @@ def get_relevant_features(
 
         epoch += 1
 
-    if isinstance(filename_output, str):
+    if filename_output is not None:
         x_new.to_csv(filename_output, index=False)
 
     return x_new
