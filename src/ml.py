@@ -5,9 +5,19 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, train_test_split
+from sklearn.linear_model import Lasso
+from sklearn.ensemble import RandomForestClassifier
 
+from typing import Union,Tuple,List
 
-def train_evaluate_model(x_train, y_train, x_test, y_test, model, verbose):
+def train_evaluate_model(x_train:pd.DataFrame, 
+                         y_train:pd.DataFrame, 
+                         x_test:pd.DataFrame,
+                         y_test:pd.DataFrame, 
+                         model:Union[Lasso,RandomForestClassifier], 
+                         verbose:bool) -> Union[Lasso,RandomForestClassifier]:
+
+    print("vediamo")
     """It trains and evaluate the machine learning model.
 
     Parameters:
@@ -40,7 +50,8 @@ def train_evaluate_model(x_train, y_train, x_test, y_test, model, verbose):
     return model
 
 
-def get_feature_importances(trained_model, column_names):
+def get_feature_importances(trained_model:Union[Lasso,RandomForestClassifier], 
+                            column_names:List[str]) -> pd.DataFrame:
     """It computes the features importance, given a trained model.
 
     Parameters:
@@ -65,7 +76,7 @@ def get_feature_importances(trained_model, column_names):
     return df_coef
 
 
-def compute_mean_coefficients(df_coefs):
+def compute_mean_coefficients(df_coefs:pd.DataFrame) -> pd.DataFrame:
     """It computes the average coefficients, given a DataFrame with multiple columns.
 
     Parameters:
@@ -90,7 +101,9 @@ def compute_mean_coefficients(df_coefs):
     return df_coef
 
 
-def select_relevant_features(df_coef, features, verbose):
+def select_relevant_features(df_coef:pd.DataFrame, 
+                             features:pd.DataFrame, 
+                             verbose:bool) -> pd.DataFrame:
     """It computes the relevant features, given the DataFrame with feature importance
     and the original features.
     This is obtained by adding a feature with random noise.
@@ -122,7 +135,8 @@ def select_relevant_features(df_coef, features, verbose):
     return simplified_dataset
 
 
-def generate_kfold_data(features, labels, random_state):
+def generate_kfold_data(features:pd.DataFrame, labels:pd.DataFrame, random_state:int
+                        ) -> Tuple[List,List,List,List]:
     """It splits the data into training and validation,
     by using the KFold splitting method.
 
@@ -152,7 +166,9 @@ def generate_kfold_data(features, labels, random_state):
     return x_trains, y_trains, x_tests, y_tests
 
 
-def train_with_kfold_splitting(features, labels, model, verbose, random_state):
+def train_with_kfold_splitting(features:pd.DataFrame, labels:pd.DataFrame,
+                                model:Union[Lasso,RandomForestClassifier], 
+                               verbose:bool, random_state:int) -> pd.DataFrame:
     """It trains the model using the kfold splitting and returns
     a DataFrame with the feature importance.
 
@@ -188,7 +204,9 @@ def train_with_kfold_splitting(features, labels, model, verbose, random_state):
     return df_coef
 
 
-def train_with_simple_splitting(features, labels, model, verbose, random_state):
+def train_with_simple_splitting(features:pd.DataFrame, labels:pd.DataFrame,
+                                model:Union[Lasso,RandomForestClassifier], 
+                                verbose:bool, random_state:int) -> pd.DataFrame:
     """It trains the model using the train/test splitting and returns
     a DataFrame with the feature importance.
 
@@ -219,8 +237,9 @@ def train_with_simple_splitting(features, labels, model, verbose, random_state):
 
 
 def scan_features_pipeline(
-    features, labels, model, splitting_type, verbose, random_state
-):
+    features:pd.DataFrame, labels:pd.DataFrame, model:Lasso, 
+    splitting_type:str, verbose:bool, random_state:int
+) -> pd.DataFrame:
     """This pipeline performs various operations:
     - train and evaluate the model
     - generates the DataFrame with the feature importance
@@ -260,16 +279,16 @@ def scan_features_pipeline(
 
 
 def get_relevant_features(
-    features,
-    labels,
-    model,
-    splitting_type,
-    epochs,
-    patience,
-    verbose=True,
-    filename_output=False,
-    random_state=42,
-):
+    features:pd.DataFrame,
+    labels:pd.DataFrame,
+    model:Union[Lasso,RandomForestClassifier],
+    splitting_type:str,
+    epochs:int,
+    patience:int,
+    verbose:bool=True,
+    filename_output:bool=False,
+    random_state:int=42,
+) -> pd.DataFrame:
     """This functions performs multiple cycles to reduce the dimension of the dataset.
 
     Parameters:
