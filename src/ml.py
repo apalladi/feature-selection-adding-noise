@@ -3,11 +3,11 @@ by adding random noise"""
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import KFold, train_test_split
 
 
-def train_evaluate_model(x_train, y_train, x_test, y_test, model, verbose):
+def train_evaluate_model(x_train, y_train, x_test, y_test, model, scaler_type, verbose):
     """It trains and evaluate the machine learning model.
 
     Parameters:
@@ -22,7 +22,15 @@ def train_evaluate_model(x_train, y_train, x_test, y_test, model, verbose):
     """
 
     # scale data
-    scaler = StandardScaler()
+    if scaler_type == "StandardScaler":
+        scaler = StandardScaler()
+    elif scaler_type == "MinMaxScaler":
+        scaler = MinMaxScaler()
+    else:
+        raise ValueError(
+            "Allowed values for scaler_type are StandardScaler and MinMaxScaler"
+        )
+
     x_train = scaler.fit_transform(x_train)
     x_test = scaler.transform(x_test)
 
@@ -53,9 +61,9 @@ def get_feature_importances(trained_model, column_names):
     """
 
     # inspect coefficients
-    if hasattr(trained_model, 'coef_'):
+    if hasattr(trained_model, "coef_"):
         model_coefficients = trained_model.coef_
-    elif hasattr(trained_model, 'feature_importances_'):
+    elif hasattr(trained_model, "feature_importances_"):
         model_coefficients = trained_model.feature_importances_
     else:
         raise ValueError("Could not retrieve the feature importance")
@@ -152,7 +160,9 @@ def generate_kfold_data(features, labels, random_state):
     return x_trains, y_trains, x_tests, y_tests
 
 
-def train_with_kfold_splitting(features, labels, model, verbose, random_state):
+def train_with_kfold_splitting(
+    features, labels, model, scaler_type, verbose, random_state
+):
     """It trains the model using the kfold splitting and returns
     a DataFrame with the feature importance.
 
@@ -174,7 +184,13 @@ def train_with_kfold_splitting(features, labels, model, verbose, random_state):
 
     for i in range(len(x_trains)):
         trained_model = train_evaluate_model(
-            x_trains[i], y_trains[i], x_tests[i], y_tests[i], model, verbose
+            x_trains[i],
+            y_trains[i],
+            x_tests[i],
+            y_tests[i],
+            model,
+            scaler_type,
+            verbose,
         )
         if i == 0:
             df_coefs = get_feature_importances(trained_model, x_trains[i].columns)
@@ -188,7 +204,9 @@ def train_with_kfold_splitting(features, labels, model, verbose, random_state):
     return df_coef
 
 
-def train_with_simple_splitting(features, labels, model, verbose, random_state):
+def train_with_simple_splitting(
+    features, labels, model, scaler_type, verbose, random_state
+):
     """It trains the model using the train/test splitting and returns
     a DataFrame with the feature importance.
 
@@ -209,7 +227,7 @@ def train_with_simple_splitting(features, labels, model, verbose, random_state):
     )
 
     trained_model = train_evaluate_model(
-        x_train, y_train, x_test, y_test, model, verbose
+        x_train, y_train, x_test, y_test, model, scaler_type, verbose
     )
     df_coefs = get_feature_importances(trained_model, x_train.columns)
 
@@ -219,7 +237,7 @@ def train_with_simple_splitting(features, labels, model, verbose, random_state):
 
 
 def scan_features_pipeline(
-    features, labels, model, splitting_type, verbose, random_state
+    features, labels, model, splitting_type, verbose, random_state, noise_type
 ):
     """This pipeline performs various operations:
     - train and evaluate the model
@@ -241,15 +259,23 @@ def scan_features_pipeline(
 
     #  add noise
     x_new = features.copy(deep=True)
-    x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
+
+    if noise_type == "gaussian":
+        x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
+        scaler_type = "StandardScaler"
+    elif noise_type == "random":
+        x_new["random_features"] = 2 * np.random.rand(len(x_new)) - 1
+        scaler_type = "MinMaxScaler"
+    else:
+        raise ValueError("Allowed values for noise_type are gaussian and random")
 
     if splitting_type == "kfold":
         df_coef = train_with_kfold_splitting(
-            x_new, labels, model, verbose, random_state
+            x_new, labels, model, scaler_type, verbose, random_state
         )
     elif splitting_type == "simple":
         df_coef = train_with_simple_splitting(
-            x_new, labels, model, verbose, random_state
+            x_new, labels, model, scaler_type, verbose, random_state
         )
     else:
         raise ValueError("Choice not recognized. Possible choices are kfold or simple")
@@ -266,6 +292,7 @@ def get_relevant_features(
     splitting_type,
     epochs,
     patience,
+    noise_type="gaussian",
     verbose=True,
     filename_output=False,
     random_state=42,
@@ -300,7 +327,13 @@ def get_relevant_features(
         n_features_before = x_new.shape[1]
         print("=====================EPOCH", epoch + 1, "=====================")
         x_new = scan_features_pipeline(
-            x_new, labels, model, splitting_type, verbose, random_states[epoch]
+            x_new,
+            labels,
+            model,
+            splitting_type,
+            verbose,
+            random_states[epoch],
+            noise_type,
         )
         n_features_after = x_new.shape[1]
 
