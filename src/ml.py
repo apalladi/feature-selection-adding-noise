@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, train_test_split
-from sklearn.linear_model import Lasso
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.base import BaseEstimator
 
 from typing import Union,Tuple,List,Optional
 
@@ -14,8 +13,8 @@ def train_evaluate_model(x_train:pd.DataFrame,
                          y_train:pd.DataFrame, 
                          x_test:pd.DataFrame,
                          y_test:pd.DataFrame, 
-                         model:Union[Lasso,RandomForestClassifier], 
-                         verbose:bool) -> Union[Lasso,RandomForestClassifier]:
+                         model:BaseEstimator, 
+                         verbose:bool) -> BaseEstimator:
 
     print("vediamo")
     """It trains and evaluate the machine learning model.
@@ -167,7 +166,7 @@ def generate_kfold_data(features:pd.DataFrame, labels:pd.DataFrame, random_state
 
 
 def train_with_kfold_splitting(features:pd.DataFrame, labels:pd.DataFrame,
-                                model:Union[Lasso,RandomForestClassifier], 
+                                model:BaseEstimator, 
                                verbose:bool, random_state:int) -> pd.DataFrame:
     """It trains the model using the kfold splitting and returns
     a DataFrame with the feature importance.
@@ -205,8 +204,8 @@ def train_with_kfold_splitting(features:pd.DataFrame, labels:pd.DataFrame,
 
 
 def train_with_simple_splitting(features:pd.DataFrame, labels:pd.DataFrame,
-                                model:Union[Lasso,RandomForestClassifier], 
-                                verbose:bool, random_state:int) -> pd.DataFrame:
+                                model:BaseEstimator, verbose:bool, 
+                                random_state:int) -> pd.DataFrame:
     """It trains the model using the train/test splitting and returns
     a DataFrame with the feature importance.
 
@@ -236,10 +235,9 @@ def train_with_simple_splitting(features:pd.DataFrame, labels:pd.DataFrame,
     return df_coef
 
 
-def scan_features_pipeline(
-    features:pd.DataFrame, labels:pd.DataFrame, model:Lasso, 
-    splitting_type:str, verbose:bool, random_state:int
-) -> pd.DataFrame:
+def scan_features_pipeline(features:pd.DataFrame, labels:pd.DataFrame,
+                            model:BaseEstimator, splitting_type:str, 
+                            verbose:bool, random_state:int) -> pd.DataFrame:
     """This pipeline performs various operations:
     - train and evaluate the model
     - generates the DataFrame with the feature importance
@@ -281,7 +279,7 @@ def scan_features_pipeline(
 def get_relevant_features(
     features:pd.DataFrame,
     labels:pd.DataFrame,
-    model:Union[Lasso,RandomForestClassifier],
+    model:BaseEstimator,
     splitting_type:str,
     epochs:int,
     patience:int,
