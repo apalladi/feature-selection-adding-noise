@@ -15,8 +15,6 @@ def train_evaluate_model(x_train:pd.DataFrame,
                          y_test:pd.DataFrame, 
                          model:BaseEstimator, 
                          verbose:bool) -> BaseEstimator:
-
-    print("vediamo")
     """It trains and evaluate the machine learning model.
 
     Parameters:
@@ -49,7 +47,7 @@ def train_evaluate_model(x_train:pd.DataFrame,
     return model
 
 
-def get_feature_importances(trained_model:Union[Lasso,RandomForestClassifier], 
+def get_feature_importances(trained_model:BaseEstimator, 
                             column_names:List[str]) -> pd.DataFrame:
     """It computes the features importance, given a trained model.
 
