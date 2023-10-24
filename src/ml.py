@@ -1,13 +1,12 @@
 """This module contains the function to perform the feature selection,
 by adding random noise"""
 
+from typing import Tuple, List, Optional
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import KFold, train_test_split
 from sklearn.base import BaseEstimator
-
-from typing import Union, Tuple, List, Optional
 
 
 def train_evaluate_model(
@@ -27,6 +26,8 @@ def train_evaluate_model(
         - x_test: test features
         - y_test: test labels
         - model: a scikit-learn machine learning (untrained) model
+        - scaler_type: choose between StandardScaler or MinMaxScaler
+        - verbose: True of False to tune the level of verbosity
 
     Return:
         - the trained model
@@ -192,6 +193,7 @@ def train_with_kfold_splitting(
         - features: the matrix with features, commonly called X
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
+        - scaler_type: choose between StandardScaler or MinMaxScaler
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
 
@@ -241,6 +243,7 @@ def train_with_simple_splitting(
         - features: the matrix with features, commonly called X
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
+        - scaler_type: choose between StandardScaler or MinMaxScaler
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
 
@@ -285,6 +288,7 @@ def scan_features_pipeline(
           or "kfold" (5-fold splitting)
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
+        - noise_type: choose between "gaussian" noise or "random" (flat) noise
 
     Return:
         - the simplified dataset, containing only the most relevant features
@@ -341,6 +345,7 @@ def get_relevant_features(
         - epochs: the number of epochs (or cycles)
         - patience: the number of cycles of non-improvement to wait before stopping
         the execution of the code
+        - noise_type: choose between "gaussian" noise or "random" (flat) noise
         - verbose: True or False, to tune the level of verbosity
         - filename_output:  name of the simplified dataset if you want to export it, default is None
         - random_state: select the random seed
