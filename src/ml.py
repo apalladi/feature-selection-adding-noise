@@ -1,20 +1,23 @@
 """This module contains the function to perform the feature selection,
 by adding random noise"""
 
+from typing import Tuple, List, Optional
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import KFold, train_test_split
 from sklearn.base import BaseEstimator
 
-from typing import Union,Tuple,List,Optional
 
-def train_evaluate_model(x_train:pd.DataFrame, 
-                         y_train:pd.DataFrame, 
-                         x_test:pd.DataFrame,
-                         y_test:pd.DataFrame, 
-                         model:BaseEstimator, 
-                         verbose:bool) -> BaseEstimator:
+def train_evaluate_model(
+    x_train: pd.DataFrame,
+    y_train: pd.DataFrame,
+    x_test: pd.DataFrame,
+    y_test: pd.DataFrame,
+    model: BaseEstimator,
+    scaler_type: BaseEstimator,
+    verbose: bool,
+) -> BaseEstimator:
     """It trains and evaluate the machine learning model.
 
     Parameters:
@@ -23,13 +26,23 @@ def train_evaluate_model(x_train:pd.DataFrame,
         - x_test: test features
         - y_test: test labels
         - model: a scikit-learn machine learning (untrained) model
+        - scaler_type: choose between StandardScaler or MinMaxScaler
+        - verbose: True of False to tune the level of verbosity
 
     Return:
         - the trained model
     """
 
     # scale data
-    scaler = StandardScaler()
+    if scaler_type == "StandardScaler":
+        scaler = StandardScaler()
+    elif scaler_type == "MinMaxScaler":
+        scaler = MinMaxScaler()
+    else:
+        raise ValueError(
+            "Allowed values for scaler_type are StandardScaler and MinMaxScaler"
+        )
+
     x_train = scaler.fit_transform(x_train)
     x_test = scaler.transform(x_test)
 
@@ -47,8 +60,9 @@ def train_evaluate_model(x_train:pd.DataFrame,
     return model
 
 
-def get_feature_importances(trained_model:BaseEstimator, 
-                            column_names:List[str]) -> pd.DataFrame:
+def get_feature_importances(
+    trained_model: BaseEstimator, column_names: List[str]
+) -> pd.DataFrame:
     """It computes the features importance, given a trained model.
 
     Parameters:
@@ -61,9 +75,9 @@ def get_feature_importances(trained_model:BaseEstimator,
     """
 
     # inspect coefficients
-    if hasattr(trained_model, 'coef_'):
+    if hasattr(trained_model, "coef_"):
         model_coefficients = trained_model.coef_
-    elif hasattr(trained_model, 'feature_importances_'):
+    elif hasattr(trained_model, "feature_importances_"):
         model_coefficients = trained_model.feature_importances_
     else:
         raise ValueError("Could not retrieve the feature importance")
@@ -73,7 +87,7 @@ def get_feature_importances(trained_model:BaseEstimator,
     return df_coef
 
 
-def compute_mean_coefficients(df_coefs:pd.DataFrame) -> pd.DataFrame:
+def compute_mean_coefficients(df_coefs: pd.DataFrame) -> pd.DataFrame:
     """It computes the average coefficients, given a DataFrame with multiple columns.
 
     Parameters:
@@ -98,9 +112,9 @@ def compute_mean_coefficients(df_coefs:pd.DataFrame) -> pd.DataFrame:
     return df_coef
 
 
-def select_relevant_features(df_coef:pd.DataFrame, 
-                             features:pd.DataFrame, 
-                             verbose:bool) -> pd.DataFrame:
+def select_relevant_features(
+    df_coef: pd.DataFrame, features: pd.DataFrame, verbose: bool
+) -> pd.DataFrame:
     """It computes the relevant features, given the DataFrame with feature importance
     and the original features.
     This is obtained by adding a feature with random noise.
@@ -132,8 +146,9 @@ def select_relevant_features(df_coef:pd.DataFrame,
     return simplified_dataset
 
 
-def generate_kfold_data(features:pd.DataFrame, labels:pd.DataFrame, random_state:int
-                        ) -> Tuple[List,List,List,List]:
+def generate_kfold_data(
+    features: pd.DataFrame, labels: pd.DataFrame, random_state: int
+) -> Tuple[List, List, List, List]:
     """It splits the data into training and validation,
     by using the KFold splitting method.
 
@@ -163,9 +178,14 @@ def generate_kfold_data(features:pd.DataFrame, labels:pd.DataFrame, random_state
     return x_trains, y_trains, x_tests, y_tests
 
 
-def train_with_kfold_splitting(features:pd.DataFrame, labels:pd.DataFrame,
-                                model:BaseEstimator, 
-                               verbose:bool, random_state:int) -> pd.DataFrame:
+def train_with_kfold_splitting(
+    features: pd.DataFrame,
+    labels: pd.DataFrame,
+    model: BaseEstimator,
+    scaler_type: BaseEstimator,
+    verbose: bool,
+    random_state: int,
+) -> pd.DataFrame:
     """It trains the model using the kfold splitting and returns
     a DataFrame with the feature importance.
 
@@ -173,6 +193,7 @@ def train_with_kfold_splitting(features:pd.DataFrame, labels:pd.DataFrame,
         - features: the matrix with features, commonly called X
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
+        - scaler_type: choose between StandardScaler or MinMaxScaler
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
 
@@ -187,7 +208,13 @@ def train_with_kfold_splitting(features:pd.DataFrame, labels:pd.DataFrame,
 
     for i in range(len(x_trains)):
         trained_model = train_evaluate_model(
-            x_trains[i], y_trains[i], x_tests[i], y_tests[i], model, verbose
+            x_trains[i],
+            y_trains[i],
+            x_tests[i],
+            y_tests[i],
+            model,
+            scaler_type,
+            verbose,
         )
         if i == 0:
             df_coefs = get_feature_importances(trained_model, x_trains[i].columns)
@@ -201,9 +228,14 @@ def train_with_kfold_splitting(features:pd.DataFrame, labels:pd.DataFrame,
     return df_coef
 
 
-def train_with_simple_splitting(features:pd.DataFrame, labels:pd.DataFrame,
-                                model:BaseEstimator, verbose:bool, 
-                                random_state:int) -> pd.DataFrame:
+def train_with_simple_splitting(
+    features: pd.DataFrame,
+    labels: pd.DataFrame,
+    model: BaseEstimator,
+    scaler_type: BaseEstimator,
+    verbose: bool,
+    random_state: int,
+) -> pd.DataFrame:
     """It trains the model using the train/test splitting and returns
     a DataFrame with the feature importance.
 
@@ -211,6 +243,7 @@ def train_with_simple_splitting(features:pd.DataFrame, labels:pd.DataFrame,
         - features: the matrix with features, commonly called X
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
+        - scaler_type: choose between StandardScaler or MinMaxScaler
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
 
@@ -224,7 +257,7 @@ def train_with_simple_splitting(features:pd.DataFrame, labels:pd.DataFrame,
     )
 
     trained_model = train_evaluate_model(
-        x_train, y_train, x_test, y_test, model, verbose
+        x_train, y_train, x_test, y_test, model, scaler_type, verbose
     )
     df_coefs = get_feature_importances(trained_model, x_train.columns)
 
@@ -233,9 +266,15 @@ def train_with_simple_splitting(features:pd.DataFrame, labels:pd.DataFrame,
     return df_coef
 
 
-def scan_features_pipeline(features:pd.DataFrame, labels:pd.DataFrame,
-                            model:BaseEstimator, splitting_type:str, 
-                            verbose:bool, random_state:int) -> pd.DataFrame:
+def scan_features_pipeline(
+    features: pd.DataFrame,
+    labels: pd.DataFrame,
+    model: BaseEstimator,
+    splitting_type: str,
+    verbose: bool,
+    random_state: int,
+    noise_type: str,
+) -> pd.DataFrame:
     """This pipeline performs various operations:
     - train and evaluate the model
     - generates the DataFrame with the feature importance
@@ -249,6 +288,7 @@ def scan_features_pipeline(features:pd.DataFrame, labels:pd.DataFrame,
           or "kfold" (5-fold splitting)
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
+        - noise_type: choose between "gaussian" noise or "random" (flat) noise
 
     Return:
         - the simplified dataset, containing only the most relevant features
@@ -256,15 +296,23 @@ def scan_features_pipeline(features:pd.DataFrame, labels:pd.DataFrame,
 
     #  add noise
     x_new = features.copy(deep=True)
-    x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
+
+    if noise_type == "gaussian":
+        x_new["random_feature"] = np.random.normal(0, 1, size=len(x_new))
+        scaler_type = "StandardScaler"
+    elif noise_type == "random":
+        x_new["random_feature"] = np.random.rand(len(x_new))
+        scaler_type = "MinMaxScaler"
+    else:
+        raise ValueError("Allowed values for noise_type are gaussian and random")
 
     if splitting_type == "kfold":
         df_coef = train_with_kfold_splitting(
-            x_new, labels, model, verbose, random_state
+            x_new, labels, model, scaler_type, verbose, random_state
         )
     elif splitting_type == "simple":
         df_coef = train_with_simple_splitting(
-            x_new, labels, model, verbose, random_state
+            x_new, labels, model, scaler_type, verbose, random_state
         )
     else:
         raise ValueError("Choice not recognized. Possible choices are kfold or simple")
@@ -275,15 +323,16 @@ def scan_features_pipeline(features:pd.DataFrame, labels:pd.DataFrame,
 
 
 def get_relevant_features(
-    features:pd.DataFrame,
-    labels:pd.DataFrame,
-    model:BaseEstimator,
-    splitting_type:str,
-    epochs:int,
-    patience:int,
-    verbose:bool=True,
-    filename_output:Optional[str]=None,
-    random_state:int=42,
+    features: pd.DataFrame,
+    labels: pd.DataFrame,
+    model: BaseEstimator,
+    splitting_type: str,
+    epochs: int,
+    patience: int,
+    noise_type: str = "gaussian",
+    verbose: bool = True,
+    filename_output: Optional[str] = None,
+    random_state: int = 42,
 ) -> pd.DataFrame:
     """This functions performs multiple cycles to reduce the dimension of the dataset.
 
@@ -296,6 +345,7 @@ def get_relevant_features(
         - epochs: the number of epochs (or cycles)
         - patience: the number of cycles of non-improvement to wait before stopping
         the execution of the code
+        - noise_type: choose between "gaussian" noise or "random" (flat) noise
         - verbose: True or False, to tune the level of verbosity
         - filename_output:  name of the simplified dataset if you want to export it, default is None
         - random_state: select the random seed
@@ -315,7 +365,13 @@ def get_relevant_features(
         n_features_before = x_new.shape[1]
         print("=====================EPOCH", epoch + 1, "=====================")
         x_new = scan_features_pipeline(
-            x_new, labels, model, splitting_type, verbose, random_states[epoch]
+            x_new,
+            labels,
+            model,
+            splitting_type,
+            verbose,
+            random_states[epoch],
+            noise_type,
         )
         n_features_after = x_new.shape[1]
 
