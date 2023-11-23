@@ -4,6 +4,7 @@ by adding random noise"""
 from typing import Tuple, List, Optional
 import numpy as np
 import pandas as pd
+import shap
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import KFold, train_test_split
 from sklearn.base import BaseEstimator
@@ -61,7 +62,10 @@ def train_evaluate_model(
 
 
 def get_feature_importances(
-    trained_model: BaseEstimator, column_names: List[str]
+    trained_model: BaseEstimator, 
+    x_train: pd.DataFrame,
+    column_names: List[str],
+    importance_type: str
 ) -> pd.DataFrame:
     """It computes the features importance, given a trained model.
 
@@ -73,16 +77,31 @@ def get_feature_importances(
         - a DataFrame containing the feature importance (not sorted) as column and
         the name of the features as index
     """
-
+    
+    # SHAP importance
+    if importance_type == "shap":
+        explainer = shap.Explainer(trained_model, x_train)
+        shap_values = explainer.shap_values(x_train)
+        
+        shap_sum = np.abs(shap_values).mean(axis=0)
+        df_coef = pd.DataFrame([shap_sum.tolist()]).T
+        df_coef.columns = ['shap_importance']
+        df_coef.index = column_names
+    
     # inspect coefficients
-    if hasattr(trained_model, "coef_"):
-        model_coefficients = trained_model.coef_
-    elif hasattr(trained_model, "feature_importances_"):
-        model_coefficients = trained_model.feature_importances_
-    else:
-        raise ValueError("Could not retrieve the feature importance")
+    elif importance_type == "model":
+        if hasattr(trained_model, "coef_"):
+            model_coefficients = trained_model.coef_
+        elif hasattr(trained_model, "feature_importances_"):
+            model_coefficients = trained_model.feature_importances_
+        else:
+            raise ValueError("Could not retrieve the feature importance")
 
-    df_coef = pd.DataFrame(model_coefficients, index=column_names)
+        df_coef = pd.DataFrame(model_coefficients, index=column_names)
+        
+    else:
+        raise ValueError("Allowed values for importance_type are model and shap")
+        
 
     return df_coef
 
@@ -183,6 +202,7 @@ def train_with_kfold_splitting(
     labels: pd.DataFrame,
     model: BaseEstimator,
     scaler_type: BaseEstimator,
+    importance_type: str,
     verbose: bool,
     random_state: int,
 ) -> pd.DataFrame:
@@ -216,12 +236,13 @@ def train_with_kfold_splitting(
             scaler_type,
             verbose,
         )
+
         if i == 0:
-            df_coefs = get_feature_importances(trained_model, x_trains[i].columns)
+            df_coefs = get_feature_importances(trained_model, x_trains[i], x_trains[i].columns, importance_type)
             df_coefs.columns = ["cycle_" + str(i + 1)]
         else:
             df_coefs["cycle_" + str(i + 1)] = get_feature_importances(
-                trained_model, x_trains[i].columns
+                trained_model, x_trains[i], x_trains[i].columns, importance_type
             )
 
     df_coef = compute_mean_coefficients(df_coefs)
@@ -233,6 +254,7 @@ def train_with_simple_splitting(
     labels: pd.DataFrame,
     model: BaseEstimator,
     scaler_type: BaseEstimator,
+    importance_type: str,
     verbose: bool,
     random_state: int,
 ) -> pd.DataFrame:
@@ -259,7 +281,7 @@ def train_with_simple_splitting(
     trained_model = train_evaluate_model(
         x_train, y_train, x_test, y_test, model, scaler_type, verbose
     )
-    df_coefs = get_feature_importances(trained_model, x_train.columns)
+    df_coefs = get_feature_importances(trained_model, x_train, x_train.columns, importance_type)
 
     df_coef = compute_mean_coefficients(df_coefs)
 
@@ -274,6 +296,7 @@ def scan_features_pipeline(
     verbose: bool,
     random_state: int,
     noise_type: str,
+    importance_type: str
 ) -> pd.DataFrame:
     """This pipeline performs various operations:
     - train and evaluate the model
@@ -308,11 +331,11 @@ def scan_features_pipeline(
 
     if splitting_type == "kfold":
         df_coef = train_with_kfold_splitting(
-            x_new, labels, model, scaler_type, verbose, random_state
+            x_new, labels, model, scaler_type, importance_type, verbose, random_state
         )
     elif splitting_type == "simple":
         df_coef = train_with_simple_splitting(
-            x_new, labels, model, scaler_type, verbose, random_state
+            x_new, labels, model, scaler_type, importance_type, verbose, random_state
         )
     else:
         raise ValueError("Choice not recognized. Possible choices are kfold or simple")
@@ -330,6 +353,7 @@ def get_relevant_features(
     epochs: int,
     patience: int,
     noise_type: str = "gaussian",
+    importance_type: str = "model",
     verbose: bool = True,
     filename_output: Optional[str] = None,
     random_state: int = 42,
@@ -372,6 +396,7 @@ def get_relevant_features(
             verbose,
             random_states[epoch],
             noise_type,
+            importance_type
         )
         n_features_after = x_new.shape[1]
 
