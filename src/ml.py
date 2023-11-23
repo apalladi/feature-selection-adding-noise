@@ -65,13 +65,17 @@ def get_feature_importances(
     trained_model: BaseEstimator, 
     x_train: pd.DataFrame,
     column_names: List[str],
+    scaler_type: BaseEstimator,
     importance_type: str
 ) -> pd.DataFrame:
     """It computes the features importance, given a trained model.
 
     Parameters:
         - trained_model: a scikit-learn ML trained model
+        - x_train: training features
         - column_names: the name of the columns associated to the features
+        - scaler_type: choose between StandardScaler or MinMaxScaler
+        - importance_type: the method for selecting feature importance
 
     Return:
         - a DataFrame containing the feature importance (not sorted) as column and
@@ -80,6 +84,13 @@ def get_feature_importances(
     
     # SHAP importance
     if importance_type == "shap":
+
+        if scaler_type == "StandardScaler":
+            scaler = StandardScaler()
+        elif scaler_type == "MinMaxScaler":
+            scaler = MinMaxScaler()
+        x_train = scaler.fit_transform(x_train)
+
         explainer = shap.Explainer(trained_model, x_train)
         shap_values = explainer.shap_values(x_train)
         
@@ -214,6 +225,7 @@ def train_with_kfold_splitting(
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
         - scaler_type: choose between StandardScaler or MinMaxScaler
+        - importance_type: the method for selecting feature importance
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
 
@@ -238,11 +250,11 @@ def train_with_kfold_splitting(
         )
 
         if i == 0:
-            df_coefs = get_feature_importances(trained_model, x_trains[i], x_trains[i].columns, importance_type)
+            df_coefs = get_feature_importances(trained_model, x_trains[i], x_trains[i].columns, scaler_type, importance_type)
             df_coefs.columns = ["cycle_" + str(i + 1)]
         else:
             df_coefs["cycle_" + str(i + 1)] = get_feature_importances(
-                trained_model, x_trains[i], x_trains[i].columns, importance_type
+                trained_model, x_trains[i], x_trains[i].columns, scaler_type, importance_type
             )
 
     df_coef = compute_mean_coefficients(df_coefs)
@@ -266,6 +278,7 @@ def train_with_simple_splitting(
         - labels: the vector with labels, commonly called y
         - model: an untrained scikit-learn model
         - scaler_type: choose between StandardScaler or MinMaxScaler
+        - importance_type: the method for selecting feature importance
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
 
@@ -281,7 +294,7 @@ def train_with_simple_splitting(
     trained_model = train_evaluate_model(
         x_train, y_train, x_test, y_test, model, scaler_type, verbose
     )
-    df_coefs = get_feature_importances(trained_model, x_train, x_train.columns, importance_type)
+    df_coefs = get_feature_importances(trained_model, x_train, x_train.columns, scaler_type, importance_type)
 
     df_coef = compute_mean_coefficients(df_coefs)
 
@@ -312,6 +325,7 @@ def scan_features_pipeline(
         - verbose: True or False to tune the level of verbosity
         - random_state: select the random state of the train/test splitting process
         - noise_type: choose between "gaussian" noise or "random" (flat) noise
+        - importance_type: the method for selecting feature importance
 
     Return:
         - the simplified dataset, containing only the most relevant features
@@ -370,6 +384,7 @@ def get_relevant_features(
         - patience: the number of cycles of non-improvement to wait before stopping
         the execution of the code
         - noise_type: choose between "gaussian" noise or "random" (flat) noise
+        - importance_type: the method for selecting feature importance
         - verbose: True or False, to tune the level of verbosity
         - filename_output:  name of the simplified dataset if you want to export it, default is None
         - random_state: select the random seed
